@@ -14,20 +14,18 @@ st.set_page_config(
 # Initialize session state for data storage (instead of SQLite)
 if 'infusions' not in st.session_state:
     st.session_state.infusions = [
-        {'id': 21, 'date': '2025-08-27', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'infusion'},
-        {'id': 20, 'date': '2025-08-13', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'No notes'},
-        {'id': 19, 'date': '2025-07-28', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'No notes'},
-        {'id': 18, 'date': '2025-05-12', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'No notes'}
+        {'id': 4, 'date': '2025-08-27', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'infusion'},
+        {'id': 3, 'date': '2025-08-13', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'No notes'},
+        {'id': 2, 'date': '2025-07-28', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'No notes'},
+        {'id': 1, 'date': '2025-07-15', 'weight': 91, 'dose': '910 mg', 'volume': '9.1 mL', 'notes': 'No notes'}
     ]
 
 if 'jc_measurements' not in st.session_state:
     st.session_state.jc_measurements = [
-        {'date': '2025-08-27', 'jc_index': 4.5, 'type': 'Baseline', 'notes': 'mri'},
-        {'date': '2025-08-13', 'jc_index': 4.1, 'type': 'Baseline', 'notes': 'N/A'},
-        {'date': '2025-07-30', 'jc_index': 3.8, 'type': 'Baseline', 'notes': 'weew'},
-        {'date': '2025-07-15', 'jc_index': 3.6, 'type': 'Baseline', 'notes': '1'},
-        {'date': '2025-06-05', 'jc_index': 3.2, 'type': 'Baseline', 'notes': '44'},
-        {'date': '2025-05-12', 'jc_index': 3.4, 'type': 'Follow-up', 'notes': '4r'}
+        {'date': '2025-08-27', 'jc_index': 4.5, 'type': 'Baseline', 'notes': 'Recent scan shows progression'},
+        {'date': '2025-08-13', 'jc_index': 4.1, 'type': 'Baseline', 'notes': 'Stable findings'},
+        {'date': '2025-07-28', 'jc_index': 3.8, 'type': 'Baseline', 'notes': 'Slight improvement noted'},
+        {'date': '2025-07-15', 'jc_index': 3.6, 'type': 'Follow-up', 'notes': 'Baseline measurement'}
     ]
 
 # Calculate risk level
@@ -111,7 +109,9 @@ with tab2:
         col1, col2 = st.columns(2)
         
         with col1:
-            new_infusion_id = st.number_input("Infusion Number", min_value=1, value=22)
+            # Get next infusion ID
+            max_id = max([inf['id'] for inf in st.session_state.infusions]) if st.session_state.infusions else 0
+            new_infusion_id = st.number_input("Infusion Number", min_value=1, value=max_id + 1)
             weight = st.number_input("Patient Weight (kg)", min_value=1, value=91)
             
         with col2:
@@ -131,7 +131,10 @@ with tab2:
                 'notes': notes if notes else 'No notes'
             }
             
+            # Insert in chronological order (most recent first)
             st.session_state.infusions.insert(0, new_infusion)
+            # Sort by date to maintain order
+            st.session_state.infusions.sort(key=lambda x: x['date'], reverse=True)
             st.success("Infusion saved successfully!")
             st.rerun()
     
@@ -154,13 +157,23 @@ with tab3:
     with st.expander("➕ Add JC Index Entry"):
         col1, col2 = st.columns(2)
         
+        # Get available infusion dates for default selection
+        infusion_dates = [inf['date'] for inf in st.session_state.infusions]
+        
         with col1:
-            jc_date = st.date_input("Date", value=datetime.now().date())
+            # Default to most recent infusion date if available
+            default_date = datetime.strptime(infusion_dates[0], '%Y-%m-%d').date() if infusion_dates else datetime.now().date()
+            jc_date = st.date_input("Date", value=default_date)
+            
+            # Show helper text about infusion dates
+            if infusion_dates:
+                st.caption("💡 Recent infusion dates: " + ", ".join(infusion_dates[:3]))
+            
             jc_index = st.number_input("JC Index", min_value=0.0, max_value=10.0, step=0.1, format="%.1f")
             
         with col2:
             jc_type = st.selectbox("JC Index Type", ["Baseline", "Follow-up"])
-            jc_notes = st.text_area("Radiologist Notes", placeholder="Enter notes")
+            jc_notes = st.text_area("Radiologist Notes", placeholder="Enter radiologist observations")
         
         if st.button("Save JC Entry", type="primary"):
             new_jc = {
@@ -170,7 +183,10 @@ with tab3:
                 'notes': jc_notes if jc_notes else 'N/A'
             }
             
+            # Insert in chronological order (most recent first)
             st.session_state.jc_measurements.insert(0, new_jc)
+            # Sort by date to maintain order
+            st.session_state.jc_measurements.sort(key=lambda x: x['date'], reverse=True)
             st.success("JC Index entry saved successfully!")
             st.rerun()
     
